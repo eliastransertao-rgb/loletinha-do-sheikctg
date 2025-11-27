@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Roleta Canvas Responsiva</title>
+<style>
+body {
+    margin:0;
+    padding:0;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    height:100vh;
+    background: url('fundo.jpg') no-repeat center center fixed;
+    background-size: cover;
+    font-family: Arial, sans-serif;
+}
+#canvasContainer {
+    position: relative;
+    width: 90vw;
+    max-width: 500px;
+    height: auto;
+}
+#wheelCanvas {
+    width: 100%;
+    height: auto;
+    display: block;
+}
+#spinButton {
+    position: absolute;
+    top:50%;
+    left:50%;
+    transform: translate(-50%, -50%);
+    width: 120px;
+    height: 120px;
+    border-radius:50%;
+    border:4px solid #fff;
+    background: url('dinheiro.jpg') no-repeat center center;
+    background-size: cover;
+    cursor:pointer;
+    animation: pulse 1.5s infinite ease-in-out;
+    z-index:2;
+}
+@keyframes pulse {
+    0% {transform: translate(-50%, -50%) scale(1);}
+    50% {transform: translate(-50%, -50%) scale(1.07);}
+    100% {transform: translate(-50%, -50%) scale(1);}
+}
+#arrow {
+    position: absolute;
+    top:0;
+    left:50%;
+    transform: translateX(-50%);
+    width:0;
+    height:0;
+    border-left:20px solid transparent;
+    border-right:20px solid transparent;
+    border-bottom:30px solid red;
+    z-index:3;
+}
+#resultBox {
+    margin-top:20px;
+    padding:10px;
+    background: rgba(255,255,255,0.9);
+    border-radius:10px;
+    font-size:18px;
+    font-weight:bold;
+    text-align:center;
+    display:none;
+}
+#adminPanel {
+    position: fixed;
+    top:10px;
+    left:10px;
+    width:180px;
+    background:#000;
+    color:#fff;
+    padding:8px;
+    border-radius:6px;
+    z-index:5;
+}
+#adminPanel input, #adminPanel button {
+    width:100%;
+    margin-bottom:4px;
+    padding:4px;
+    background:#222;
+    color:#fff;
+    border:1px solid #555;
+}
+#adminPanel button {
+    cursor:pointer;
+    background:#444;
+}
+#introOverlay {
+    position: fixed;
+    top:0;
+    left:0;
+    width:100%;
+    height:100%;
+    background: rgba(0,0,0,0.7);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    z-index:10;
+}
+#introBox {
+    background:#fff;
+    padding:20px;
+    border-radius:10px;
+    text-align:center;
+    max-width:300px;
+}
+#introBox button {
+    margin-top:15px;
+    padding:8px 12px;
+    background:#1e90ff;
+    color:#fff;
+    border:none;
+    border-radius:5px;
+    cursor:pointer;
+    animation: pulse 1.5s infinite ease-in-out;
+}
+</style>
+</head>
+<body>
+
+<div id="introOverlay">
+    <div id="introBox">
+        <p>Digite o código correto para girar a roleta.<br>
+        Você pode ganhar R$5, R$10 ou uma chance de girar de novo!</p>
+        <button onclick="startGame()">Continue</button>
+    </div>
+</div>
+
+<div id="canvasContainer">
+    <canvas id="wheelCanvas" width="500" height="500"></canvas>
+    <div id="arrow"></div>
+    <div id="spinButton"></div>
+</div>
+
+<div id="resultBox"></div>
+
+<div id="adminPanel">
+    <input type="text" id="adminUser" placeholder="Usuário">
+    <input type="password" id="adminPass" placeholder="Senha">
+    <button onclick="loginAdmin()">Entrar</button>
+    <div id="adminContent" style="display:none; margin-top:5px;">
+        <label>Código atual:</label>
+        <div id="currentCode">Carregando...</div>
+        <input type="text" id="newCode" placeholder="Novo código">
+        <button id="saveCodeBtn">Salvar código</button>
+        <label>Porcentagem de vitória (%):</label>
+        <input type="number" id="winPercentage" min="0" max="100" placeholder="Ex: 1">
+        <button id="savePercBtn">Salvar porcentagem</button>
+    </div>
+</div>
+
+<audio id="spinSound" src="giro.mp3"></audio>
+
+<script>
+const canvas = document.getElementById('wheelCanvas');
+const ctx = canvas.getContext('2d');
+const radius = canvas.width/2;
+
+const slices = [
+  { type:'none', text:'TENTANDO A SORTE' },
+  { type:'prize', value:5, text:'TENTANDO A SORTE' },
+  { type:'none', text:'TENTANDO A SORTE' },
+  { type:'prize', value:10, text:'TENTANDO A SORTE' },
+  { type:'none', text:'TENTANDO A SORTE' },
+  { type:'reroll', text:'TENTANDO A SORTE' },
+  { type:'none', text:'TENTANDO A SORTE' },
+  { type:'prize', value:5, text:'TENTANDO A SORTE' },
+  { type:'none', text:'TENTANDO A SORTE' }
+];
+const colors = ["#ff3b3b","#ff8a1f","#ffd400","#7be000","#00d6d6","#1e90ff","#8a2be2","#ff1493","#32cd32"];
+const totalSlices = slices.length;
+const angleStep = 2*Math.PI/totalSlices;
+let currentRotation = 0;
+
+function drawWheel(){
+    for(let i=0;i<totalSlices;i++){
+        let startAngle = i*angleStep;
+        let endAngle = startAngle + angleStep;
+        ctx.beginPath();
+        ctx.moveTo(radius, radius);
+        ctx.arc(radius, radius, radius, startAngle, endAngle);
+        ctx.closePath();
+        ctx.fillStyle = colors[i] + '88'; // transparência
+        ctx.fill();
+        ctx.stroke();
+        ctx.save();
+        ctx.translate(radius, radius);
+        ctx.rotate(startAngle + angleStep/2);
+        ctx.textAlign = "right";
+        ctx.fillStyle = "#000";
+        ctx.font = "bold 12px Arial";
+        ctx.fillText(slices[i].text, radius-10, 0);
+        ctx.restore();
+    }
+}
+drawWheel();
+
+if(!localStorage.getItem("gameCode")) localStorage.setItem("gameCode","12345");
+document.getElementById("currentCode").innerText = localStorage.getItem("gameCode");
+if(!localStorage.getItem("winPercentage")) localStorage.setItem("winPercentage","100");
+
+function startGame(){
+    document.getElementById('introOverlay').style.display='none';
+    document.getElementById('spinButton').style.pointerEvents='auto';
+}
+
+function hasUsed(code){ return localStorage.getItem("used_"+code)=="yes"; }
+function markUsed(code){ localStorage.setItem("used_"+code,"yes"); }
+
+let spinning=false;
+document.getElementById("spinButton").addEventListener('click', function(){
+    if(spinning) return;
+    let code = prompt("Digite o código:");
+    if(code !== localStorage.getItem("gameCode")){ alert("Código incorreto!"); return;}
+    if(hasUsed(code)){ alert("Este código já foi usado!"); return;}
+    spinning=true;
+    document.getElementById("spinSound").play();
+    document.getElementById("resultBox").style.display="none";
+
+    const winPerc = parseInt(localStorage.getItem("winPercentage"));
+    let finalIndex;
+    // Escolher a fatia final ANTES da animação
+    if(winPerc <= 0){
+        const nonPrizeIndices = slices.map((s,i)=>s.type==='none'?i:null).filter(i=>i!==null);
+        finalIndex = nonPrizeIndices[Math.floor(Math.random()*nonPrizeIndices.length)];
+    } else if(winPerc >= 100){
+        const winningIndices = slices.map((s,i)=> (s.type==='prize' || s.type==='reroll') ? i : null).filter(i=>i!==null);
+        finalIndex = winningIndices[Math.floor(Math.random()*winningIndices.length)];
+    } else {
+        if(Math.random()*100 < winPerc){
+            const winningIndices = slices.map((s,i)=> (s.type==='prize' || s.type==='reroll') ? i : null).filter(i=>i!==null);
+            finalIndex = winningIndices[Math.floor(Math.random()*winningIndices.length)];
+        } else {
+            const nonPrizeIndices = slices.map((s,i)=>s.type==='none'?i:null).filter(i=>i!==null);
+            finalIndex = nonPrizeIndices[Math.floor(Math.random()*nonPrizeIndices.length)];
+        }
+    }
+
+    let targetAngle = 360*10 + (360/totalSlices)*finalIndex + (360/(2*totalSlices));
+    const duration = 6000;
+    const start = performance.now();
+    const startRotation = currentRotation;
+
+    function animate(time){
+        let elapsed = time - start;
+        if(elapsed < duration){
+            let t = elapsed/duration;
+            let ease = 1 - Math.pow(1-t,3);
+            let rot = startRotation + targetAngle*ease;
+            currentRotation = rot % 360;
+            drawRotatedWheel(currentRotation);
+            requestAnimationFrame(animate);
+        } else {
+            currentRotation = targetAngle % 360;
+            drawRotatedWheel(currentRotation);
+            const finalSlice = slices[finalIndex];
+            let msg;
+            if(finalSlice.type === 'prize'){ 
+                msg = `Parabéns! Você ganhou R$${finalSlice.value}`;
+            } else if(finalSlice.type === 'reroll'){
+                msg = 'Sheik vai gerar outro código especial pra você';
+            } else {
+                msg = 'Tente de novo na próxima promoção';
+            }
+            document.getElementById("resultBox").innerText = msg;
+            document.getElementById("resultBox").style.display="block";
+            markUsed(code);
+            spinning=false;
+        }
+    }
+    requestAnimationFrame(animate);
+});
+
+function drawRotatedWheel(rotationDeg){
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    ctx.save();
+    ctx.translate(radius,radius);
+    ctx.rotate(rotationDeg*Math.PI/180);
+    ctx.translate(-radius,-radius);
+    drawWheel();
+    ctx.restore();
+}
+
+function loginAdmin(){
+    let user=document.getElementById("adminUser").value;
+    let pass=document.getElementById("adminPass").value;
+    if(user==='sheik' && pass==='sheikadm'){
+        document.getElementById("adminContent").style.display='block';
+        document.getElementById("winPercentage").value = localStorage.getItem("winPercentage");
+        document.getElementById("saveCodeBtn").onclick = saveNewCode;
+        document.getElementById("savePercBtn").onclick = saveWinPercentage;
+        alert('Login admin realizado com sucesso!');
+    } else {
+        alert('Usuário ou senha incorreto!');
+    }
+}
+
+function saveNewCode(){
+    const nc = document.getElementById("newCode").value.trim();
+    if(nc === "") { alert("Digite um código válido"); return; }
+    localStorage.setItem("gameCode", nc);
+    document.getElementById("currentCode").innerText = nc;
+    alert("Código atualizado!");
+}
+
+function saveWinPercentage(){
+    let perc = parseInt(document.getElementById("winPercentage").value);
+    if(isNaN(perc) || perc < 0 || perc > 100){ alert('Digite um valor entre 0 e 100'); return; }
+    localStorage.setItem("winPercentage", perc);
+    alert('Porcentagem de vitória atualizada para ' + perc + '%');
+}
+</script>
+</body>
+</html>
