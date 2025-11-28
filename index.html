@@ -1,199 +1,95 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Roleta Canvas Responsiva - Sincronizada</title>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Roleta Sincronizada - SheikCTG</title>
 <style>
-body {
-    margin:0;
-    padding:0;
-    display:flex;
-    flex-direction:column;
-    align-items:center;
-    justify-content:center;
-    height:100vh;
-    background: url('fundo.jpg') no-repeat center center fixed;
-    background-size: cover;
-    font-family: Arial, sans-serif;
-}
-#canvasContainer {
-    position: relative;
-    width: 90vw;
-    max-width: 500px;
-    height: auto;
-}
-#wheelCanvas {
-    width: 100%;
-    height: auto;
-    display: block;
-}
-#spinButton {
-    position: absolute;
-    top:50%;
-    left:50%;
-    transform: translate(-50%, -50%);
-    width: 120px;
-    height: 120px;
-    border-radius:50%;
-    border:4px solid #fff;
-    background: url('dinheiro.jpg') no-repeat center center;
-    background-size: cover;
-    cursor:pointer;
-    animation: pulse 1.5s infinite ease-in-out;
-    z-index:2;
-}
-@keyframes pulse {
-    0% {transform: translate(-50%, -50%) scale(1);}
-    50% {transform: translate(-50%, -50%) scale(1.07);}
-    100% {transform: translate(-50%, -50%) scale(1);}
-}
-#arrow {
-    position: absolute;
-    top:0;
-    left:50%;
-    transform: translateX(-50%);
-    width:0;
-    height:0;
-    border-left:20px solid transparent;
-    border-right:20px solid transparent;
-    border-bottom:30px solid red;
-    z-index:3;
-}
-#resultBox {
-    margin-top:20px;
-    padding:10px;
-    background: rgba(255,255,255,0.9);
-    border-radius:10px;
-    font-size:18px;
-    font-weight:bold;
-    text-align:center;
-    display:none;
-}
-#adminPanel {
-    position: fixed;
-    top:10px;
-    left:10px;
-    width:220px;
-    background:#000;
-    color:#fff;
-    padding:8px;
-    border-radius:6px;
-    z-index:5;
-}
-#adminPanel input, #adminPanel button {
-    width:100%;
-    margin-bottom:4px;
-    padding:6px;
-    background:#222;
-    color:#fff;
-    border:1px solid #555;
-}
-#adminPanel button {
-    cursor:pointer;
-    background:#444;
-}
-#introOverlay {
-    position: fixed;
-    top:0;
-    left:0;
-    width:100%;
-    height:100%;
-    background: rgba(0,0,0,0.7);
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    z-index:10;
-}
-#introBox {
-    background:#fff;
-    padding:20px;
-    border-radius:10px;
-    text-align:center;
-    max-width:300px;
-}
-#introBox button {
-    margin-top:15px;
-    padding:8px 12px;
-    background:#1e90ff;
-    color:#fff;
-    border:none;
-    border-radius:5px;
-    cursor:pointer;
-    animation: pulse 1.5s infinite ease-in-out;
-}
-.small {
-    font-size:12px;
-    color:#ddd;
-    margin-top:6px;
-}
+  body{margin:0;padding:0;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;background:#111;color:#fff;font-family:Arial,Helvetica,sans-serif}
+  #canvasContainer{position:relative;width:90vw;max-width:500px;height:auto}
+  #wheelCanvas{width:100%;height:auto;display:block;background:transparent}
+  #spinButton{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:120px;height:120px;border-radius:50%;border:4px solid #fff;background:url('dinheiro.jpg') no-repeat center center;background-size:cover;cursor:pointer;animation:pulse 1.5s infinite ease-in-out;z-index:2}
+  @keyframes pulse{0%{transform:translate(-50%,-50%) scale(1)}50%{transform:translate(-50%,-50%) scale(1.07)}100%{transform:translate(-50%,-50%) scale(1)}}
+  #arrow{position:absolute;top:0;left:50%;transform:translateX(-50%);width:0;height:0;border-left:20px solid transparent;border-right:20px solid transparent;border-bottom:30px solid red;z-index:3}
+  #resultBox{margin-top:20px;padding:10px;background:rgba(255,255,255,0.95);color:#000;border-radius:10px;font-size:18px;font-weight:bold;text-align:center;display:none;max-width:90%}
+  #adminPanel{position:fixed;top:10px;left:10px;width:280px;background:#000;color:#fff;padding:10px;border-radius:8px;z-index:50;box-shadow:0 6px 20px rgba(0,0,0,0.6)}
+  #adminPanel input,#adminPanel button{width:100%;margin-bottom:6px;padding:8px;background:#222;border:1px solid #444;color:#fff;box-sizing:border-box;border-radius:4px}
+  #adminPanel button{cursor:pointer;background:#1e90ff;border:none}
+  #adminSmall{font-size:12px;color:#bbb;margin-top:6px}
+  #adminStatus{font-size:13px;color:#ffb3b3;margin-top:6px;display:none}
+  #introOverlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;z-index:40}
+  #introBox{background:#fff;padding:20px;border-radius:10px;text-align:center;color:#000;max-width:320px}
+  #introBox button{margin-top:12px;padding:8px 12px;background:#1e90ff;color:#fff;border:none;border-radius:6px;cursor:pointer}
 </style>
 </head>
 <body>
 
+<!-- Intro / código -->
 <div id="introOverlay">
-    <div id="introBox">
-        <p>Digite o código correto para girar a roleta.<br>
-        Você pode ganhar premios em dinheiro ou uma chance de girar de novo!
-        se você ganhar, é só estar seguindo o sheikctg tirar um print e marcar nos story
-        BOA SORTE.!</p>
-        <button onclick="startGame()">Continue</button>
-    </div>
+  <div id="introBox">
+    <p>Digite o código correto para girar a roleta.<br>Você pode ganhar R$5, R$10 ou uma chance de girar de novo!<br>Se ganhar, siga @sheikctg e compartilhe nos stories.</p>
+    <button onclick="startGame()">Continuar</button>
+  </div>
 </div>
 
+<!-- Roleta -->
 <div id="canvasContainer">
-    <canvas id="wheelCanvas" width="500" height="500"></canvas>
-    <div id="arrow"></div>
-    <div id="spinButton"></div>
+  <canvas id="wheelCanvas" width="500" height="500"></canvas>
+  <div id="arrow"></div>
+  <div id="spinButton"></div>
 </div>
 
+<!-- Resultado -->
 <div id="resultBox"></div>
 
+<!-- Painel admin (visível) -->
 <div id="adminPanel">
-    <input type="text" id="adminUser" placeholder="Usuário">
-    <input type="password" id="adminPass" placeholder="Senha">
-    <button onclick="loginAdmin()">Entrar</button>
-    <div id="adminContent" style="display:none; margin-top:5px;">
-        <label>Código atual:</label>
-        <div id="currentCode">Carregando...</div>
-        <input type="text" id="newCode" placeholder="Novo código">
-        <button id="saveCodeBtn">Salvar código</button>
-        <label>Porcentagem de vitória (%):</label>
-        <input type="number" id="winPercentage" min="0" max="100" placeholder="Ex: 1">
-        <button id="savePercBtn">Salvar porcentagem</button>
+  <input id="adminUser" placeholder="Usuário (admin)">
+  <input id="adminPass" type="password" placeholder="Senha">
+  <button id="loginBtn">Entrar</button>
 
-        <div style="margin-top:8px;">
-            <button id="viewWinnersBtn">Ver vencedores</button>
-            <div id="winnersList" style="max-height:160px; overflow:auto; margin-top:6px; display:none; background:#111; padding:6px; border-radius:6px;"></div>
-        </div>
-        <div class="small">Admin: apenas você tem acesso.</div>
-    </div>
+  <div id="adminContent" style="display:none; margin-top:8px;">
+    <label style="color:#bbb">Código atual:</label>
+    <div id="currentCode" style="padding:6px;background:#070707;border-radius:4px;color:#fff;margin-bottom:6px">Carregando...</div>
+
+    <input id="newCode" placeholder="Novo código (ex: 12345)">
+    <button id="saveCodeBtn">Salvar código</button>
+
+    <label style="color:#bbb">Porcentagem de vitória (%):</label>
+    <input id="winPercentage" type="number" min="0" max="100" placeholder="Ex: 10">
+    <button id="savePercBtn">Salvar porcentagem</button>
+
+    <button id="viewWinnersBtn">Ver vencedores</button>
+    <div id="winnersList" style="display:none; max-height:160px; overflow:auto; margin-top:8px; background:#111; padding:8px; border-radius:6px; color:#ddd"></div>
+
+    <div id="adminSmall">Painel visível — somente administradores logados podem salvar</div>
+    <div id="adminStatus"></div>
+  </div>
 </div>
 
 <audio id="spinSound" src="giro.mp3"></audio>
 
 <script>
-/* ==========================
-   CONFIGURAÇÕES
-   ========================== */
-const JSONBIN_BIN_ID = "6929f63c43b1c97be9cb50b8"; // novo BIN ID
-const JSONBIN_API_KEY = "$2a$10$v6bw3uBXsBiZlVPmD8th9OsO8L7gjtSBsR7iOJV/8Q3PLgR/k3kna"; // nova API KEY
+/* ========== CONFIG ========== */
+const JSONBIN_BIN_ID = "6929f9e2d0ea881f400656e0";
+const JSONBIN_API_KEY = "$2a$10$x1E43WgjamLTJa.pUhcmKeuyrwUixiXF9XscryRNHEuuvjb3j2YjC";
 const JSONBIN_BASE = "https://api.jsonbin.io/v3/b/" + JSONBIN_BIN_ID;
-const ADMIN_CREDENTIALS = { user: "sheikctg", pass: "Sheikctg1994" };
+const ADMIN_CREDENTIALS = { user: "sheikctg", pass: "sheikctg1994" };
 
+/* ========== ROULETTE DATA ========== */
 const canvas = document.getElementById('wheelCanvas');
 const ctx = canvas.getContext('2d');
-const radius = canvas.width/2;
+const radius = canvas.width / 2;
 
 const slices = [
   { type:'none', text:'TENTANDO A SORTE' },
-  { type:'prize', value:5, text:'TENTANDO A SORTE' },
+  { type:'prize', value:5, text:'R$5' },
   { type:'none', text:'TENTANDO A SORTE' },
-  { type:'prize', value:10, text:'TENTANDO A SORTE' },
+  { type:'prize', value:10, text:'R$10' },
   { type:'none', text:'TENTANDO A SORTE' },
-  { type:'reroll', text:'TENTANDO A SORTE' },
+  { type:'reroll', text:'GIRAR DE NOVO' },
   { type:'none', text:'TENTANDO A SORTE' },
-  { type:'prize', value:5, text:'TENTANDO A SORTE' },
+  { type:'prize', value:5, text:'R$5' },
   { type:'none', text:'TENTANDO A SORTE' }
 ];
 const colors = ["#ff3b3b","#ff8a1f","#ffd400","#7be000","#00d6d6","#1e90ff","#8a2be2","#ff1493","#32cd32"];
@@ -202,268 +98,298 @@ const angleStep = 2*Math.PI/totalSlices;
 let currentRotation = 0;
 let serverState = { gameCode: null, winPercentage: 100, usedCodes: [], winners: [] };
 
+/* ========== DRAW ========== */
 function drawWheel(){
-    for(let i=0;i<totalSlices;i++){
-        let startAngle = i*angleStep;
-        let endAngle = startAngle + angleStep;
-        ctx.beginPath();
-        ctx.moveTo(radius, radius);
-        ctx.arc(radius, radius, radius, startAngle, endAngle);
-        ctx.closePath();
-        ctx.fillStyle = colors[i] + '88';
-        ctx.fill();
-        ctx.stroke();
-        ctx.save();
-        ctx.translate(radius, radius);
-        ctx.rotate(startAngle + angleStep/2);
-        ctx.textAlign = "right";
-        ctx.fillStyle = "#000";
-        ctx.font = "bold 12px Arial";
-        ctx.fillText(slices[i].text, radius-10, 0);
-        ctx.restore();
-    }
+  for(let i=0;i<totalSlices;i++){
+    let startAngle = i*angleStep;
+    let endAngle = startAngle + angleStep;
+    ctx.beginPath();
+    ctx.moveTo(radius, radius);
+    ctx.arc(radius, radius, radius, startAngle, endAngle);
+    ctx.closePath();
+    ctx.fillStyle = colors[i] + 'cc';
+    ctx.fill();
+    ctx.stroke();
+    ctx.save();
+    ctx.translate(radius, radius);
+    ctx.rotate(startAngle + angleStep/2);
+    ctx.textAlign = "right";
+    ctx.fillStyle = "#000";
+    ctx.font = "bold 12px Arial";
+    ctx.fillText(slices[i].text, radius-10, 0);
+    ctx.restore();
+  }
 }
 drawWheel();
 
-/* ==========================
-   Helpers JSONBin
-   ========================== */
+/* ========== JSONBin HELPERS ========== */
+function showAdminStatus(msg, isError=false){
+  const el = document.getElementById('adminStatus');
+  el.style.display = 'block';
+  el.style.color = isError ? '#ff9b9b' : '#b9ffb9';
+  el.innerText = msg;
+}
+
 async function fetchBinLatest(){
-    const url = JSONBIN_BASE + "/latest";
-    const res = await fetch(url, {
-        method: 'GET',
-        headers: { 'Content-Type': 'application/json', 'X-Master-Key': JSONBIN_API_KEY }
-    });
-    if(!res.ok) throw new Error('Falha ao ler bin: ' + res.status);
-    const j = await res.json();
-    const data = j && (j.record || j) ;
-    if(data && data.record && typeof data.record === 'object') return data.record;
-    if(j && j.record) return j.record;
-    if(j && j?.data) return j.data;
-    if(j && j?.record?.data) return j.record.data;
-    return j;
+  const url = JSONBIN_BASE + "/latest";
+  const res = await fetch(url, {
+    method: 'GET',
+    headers: { 'Content-Type': 'application/json', 'X-Master-Key': JSONBIN_API_KEY }
+  });
+  if(res.status === 401 || res.status === 403){
+    showAdminStatus('Erro: API Key inválida ou sem permissão (401/403).', true);
+    throw new Error('Unauthorized: ' + res.status);
+  }
+  if(!res.ok){
+    throw new Error('Falha ao ler bin: ' + res.status);
+  }
+  const j = await res.json();
+  // compatibilidade com wrappers
+  return j.record || j.data || j;
 }
 
 async function updateBin(newData){
-    const url = JSONBIN_BASE;
-    const body = JSON.stringify({ data: newData });
-    const res = await fetch(url, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json', 'X-Master-Key': JSONBIN_API_KEY },
-        body
+  const url = JSONBIN_BASE;
+  // primeiro tenta enviar com wrapper { data: ... } (JSONBin v3 padrão)
+  let res = await fetch(url, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', 'X-Master-Key': JSONBIN_API_KEY },
+    body: JSON.stringify({ data: newData })
+  });
+  if(res.status === 401 || res.status === 403){
+    showAdminStatus('Erro: API Key inválida ao atualizar (401/403).', true);
+    throw new Error('Unauthorized update: ' + res.status);
+  }
+  if(!res.ok){
+    // segunda tentativa: enviar o objeto diretamente (algumas contas esperam isso)
+    const alt = await fetch(url, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'X-Master-Key': JSONBIN_API_KEY },
+      body: JSON.stringify(newData)
     });
-    if(!res.ok){
-        const txt = await res.text();
-        throw new Error('Falha ao atualizar bin: ' + res.status + ' ' + txt);
+    if(alt.status === 401 || alt.status === 403){
+      showAdminStatus('Erro: API Key inválida ao atualizar (segunda tentativa).', true);
+      throw new Error('Unauthorized update alt: ' + alt.status);
     }
-    return await res.json();
+    if(!alt.ok){
+      const txt = await alt.text();
+      throw new Error('Falha ao atualizar bin (alt): ' + alt.status + ' ' + txt);
+    }
+    return await alt.json();
+  }
+  return await res.json();
 }
 
+/* ========== LOAD SERVER STATE ========== */
 async function loadServerState(){
-    try{
-        const bin = await fetchBinLatest();
-        const data = bin.data || bin || {};
-        serverState.gameCode = data.gameCode ?? (serverState.gameCode || "12345");
-        serverState.winPercentage = data.winPercentage ?? (serverState.winPercentage ?? 100);
-        serverState.usedCodes = data.usedCodes ?? (serverState.usedCodes || []);
-        serverState.winners = data.winners ?? (serverState.winners || []);
-        document.getElementById('currentCode').innerText = serverState.gameCode || '—';
-        document.getElementById('winPercentage').value = serverState.winPercentage;
-    }catch(e){
-        console.error(e);
-        document.getElementById('currentCode').innerText = 'ERRO';
-    }
-}
-loadServerState();
-
-/* ==========================
-   Game Flow
-   ========================== */
-function startGame(){
-    document.getElementById('introOverlay').style.display='none';
-    document.getElementById('spinButton').style.pointerEvents='auto';
-}
-
-let spinning=false;
-document.getElementById("spinButton").addEventListener('click', async function(){
-    if(spinning) return;
-    let code = prompt("Digite o código:");
-    if(!code) return;
-    try { await loadServerState(); } catch(e){ alert('Erro ao conectar no servidor.'); return; }
-    if(String(code) !== String(serverState.gameCode)){ alert("Código incorreto!"); return; }
-    if(serverState.usedCodes.includes(String(code))){ alert("Este código já foi usado!"); return; }
-    try{ await markCodeUsed(code); } catch(e){ alert('Erro ao registrar uso.'); return; }
-
-    spinning=true;
-    document.getElementById("spinSound").play();
-    document.getElementById("resultBox").style.display="none";
-
-    const winPerc = parseInt(serverState.winPercentage) || 0;
-    let finalIndex;
-    if(winPerc <= 0){
-        const nonPrizeIndices = slices.map((s,i)=>s.type==='none'?i:null).filter(i=>i!==null);
-        finalIndex = nonPrizeIndices[Math.floor(Math.random()*nonPrizeIndices.length)];
-    } else if(winPerc >= 100){
-        const winningIndices = slices.map((s,i)=> (s.type==='prize' || s.type==='reroll') ? i : null).filter(i=>i!==null);
-        finalIndex = winningIndices[Math.floor(Math.random()*winningIndices.length)];
-    } else {
-        if(Math.random()*100 < winPerc){
-            const winningIndices = slices.map((s,i)=> (s.type==='prize' || s.type==='reroll') ? i : null).filter(i=>i!==null);
-            finalIndex = winningIndices[Math.floor(Math.random()*winningIndices.length)];
-        } else {
-            const nonPrizeIndices = slices.map((s,i)=>s.type==='none'?i:null).filter(i=>i!==null);
-            finalIndex = nonPrizeIndices[Math.floor(Math.random()*nonPrizeIndices.length)];
-        }
-    }
-
-    let targetAngle = 360*10 + (360/totalSlices)*finalIndex + (360/(2*totalSlices));
-    const duration = 6000;
-    const start = performance.now();
-    const startRotation = currentRotation;
-
-    function animate(time){
-        let elapsed = time - start;
-        if(elapsed < duration){
-            let t = elapsed/duration;
-            let ease = 1 - Math.pow(1-t,3);
-            let rot = startRotation + targetAngle*ease;
-            currentRotation = rot % 360;
-            drawRotatedWheel(currentRotation);
-            requestAnimationFrame(animate);
-        } else {
-            currentRotation = targetAngle % 360;
-            drawRotatedWheel(currentRotation);
-            const finalSlice = slices[finalIndex];
-            let msg;
-            if(finalSlice.type === 'prize'){ 
-                msg = `Parabéns! Você ganhou R$${finalSlice.value}`;
-                registerWinner({ code: serverState.gameCode, prize: finalSlice.value });
-            } else if(finalSlice.type === 'reroll'){
-                msg = 'Sheik vai gerar outro código especial pra você';
-                registerWinner({ code: serverState.gameCode, prize: 'REROLL' });
-            } else {
-                msg = 'Tente de novo na próxima promoção';
-            }
-            document.getElementById("resultBox").innerText = msg;
-            document.getElementById("resultBox").style.display="block";
-            spinning=false;
-        }
-    }
-    requestAnimationFrame(animate);
-});
-
-function drawRotatedWheel(rotationDeg){
-    ctx.clearRect(0,0,canvas.width,canvas.height);
-    ctx.save();
-    ctx.translate(radius,radius);
-    ctx.rotate(rotationDeg*Math.PI/180);
-    ctx.translate(-radius,-radius);
-    drawWheel();
-    ctx.restore();
-}
-
-/* ==========================
-   JSONBin Operations
-   ========================== */
-async function markCodeUsed(code){
+  try{
     const bin = await fetchBinLatest();
     const data = bin.data || bin || {};
-    data.usedCodes = data.usedCodes || [];
-    if(data.usedCodes.includes(String(code))) throw new Error('Já usado');
-    data.usedCodes.push(String(code));
-    data.winners = data.winners || [];
-    serverState.usedCodes = data.usedCodes;
-    await updateBin(data);
-    return true;
+    serverState.gameCode = data.gameCode ?? data.currentCode ?? (serverState.gameCode || "12345");
+    serverState.winPercentage = data.winPercentage ?? (serverState.winPercentage ?? 100);
+    serverState.usedCodes = data.usedCodes ?? (serverState.usedCodes || []);
+    serverState.winners = data.winners ?? (serverState.winners || []);
+    document.getElementById('currentCode').innerText = serverState.gameCode || '—';
+    document.getElementById('winPercentage').value = serverState.winPercentage;
+    document.getElementById('adminStatus').style.display = 'none';
+  }catch(err){
+    console.error(err);
+    // message already set in fetchBinLatest / updateBin via showAdminStatus
+    document.getElementById('currentCode').innerText = 'ERRO';
+  }
+}
+
+/* initial load */
+loadServerState();
+
+/* Polling to keep clients in sync */
+setInterval(loadServerState, 4000);
+
+/* ========== GAME FLOW ========== */
+function startGame(){
+  document.getElementById('introOverlay').style.display='none';
+  document.getElementById('spinButton').style.pointerEvents='auto';
+}
+
+function hasUsed(code){ return serverState.usedCodes && serverState.usedCodes.includes(String(code)); }
+
+/* mark used writes to bin (prevents double use across clients) */
+async function markCodeUsed(code){
+  const bin = await fetchBinLatest();
+  const data = bin.data || bin || {};
+  data.usedCodes = data.usedCodes || [];
+  if(data.usedCodes.includes(String(code))) throw new Error('Já usado');
+  data.usedCodes.push(String(code));
+  data.winners = data.winners || [];
+  // write back
+  await updateBin(data);
+  // update local cache
+  serverState.usedCodes = data.usedCodes;
+  return true;
 }
 
 async function registerWinner(entry){
-    try{
-        const bin = await fetchBinLatest();
-        const data = bin.data || bin || {};
-        data.winners = data.winners || [];
-        const record = {
-            code: entry.code,
-            prize: entry.prize,
-            when: new Date().toISOString(),
-            identifier: navigator.userAgent || 'unknown'
-        };
-        data.winners.push(record);
-        data.usedCodes = data.usedCodes || [];
-        if(!data.usedCodes.includes(String(entry.code))) data.usedCodes.push(String(entry.code));
-        await updateBin(data);
-        serverState.winners = data.winners;
-        serverState.usedCodes = data.usedCodes;
-    }catch(e){ console.error('Erro ao registrar vencedor', e); }
+  try{
+    const bin = await fetchBinLatest();
+    const data = bin.data || bin || {};
+    data.winners = data.winners || [];
+    const record = {
+      code: entry.code,
+      prize: entry.prize,
+      when: new Date().toISOString(),
+      identifier: navigator.userAgent || 'unknown'
+    };
+    data.winners.push(record);
+    data.usedCodes = data.usedCodes || [];
+    if(!data.usedCodes.includes(String(entry.code))) data.usedCodes.push(String(entry.code));
+    await updateBin(data);
+    serverState.winners = data.winners;
+    serverState.usedCodes = data.usedCodes;
+  }catch(e){ console.error('Erro ao registrar vencedor', e); }
 }
 
-/* ==========================
-   Admin
-   ========================== */
-async function loginAdmin(){
-    let user=document.getElementById("adminUser").value.trim();
-    let pass=document.getElementById("adminPass").value.trim();
-    if(user === ADMIN_CREDENTIALS.user && pass === ADMIN_CREDENTIALS.pass){
-        document.getElementById("adminContent").style.display='block';
-        try{ await loadServerState(); } catch(e){}
-        document.getElementById("winPercentage").value = serverState.winPercentage;
-        document.getElementById("saveCodeBtn").onclick = saveNewCode;
-        document.getElementById("savePercBtn").onclick = saveWinPercentage;
-        document.getElementById("viewWinnersBtn").onclick = toggleWinners;
-        alert('Login admin realizado com sucesso!');
-    } else { alert('Usuário ou senha incorreto!'); }
+let spinning = false;
+document.getElementById('spinButton').addEventListener('click', async function(){
+  if(spinning) return;
+  let code = prompt("Digite o código:");
+  if(!code) return;
+  try{ await loadServerState(); } catch(e){ alert('Erro ao conectar ao servidor.'); return; }
+  if(String(code) !== String(serverState.gameCode)){ alert("Código incorreto!"); return; }
+  if(hasUsed(code)){ alert("Este código já foi usado!"); return; }
+  try { await markCodeUsed(code); } catch(e){ alert('Erro ao registrar uso do código.'); console.error(e); return; }
+
+  spinning=true;
+  document.getElementById('spinSound').play();
+  document.getElementById('resultBox').style.display='none';
+
+  const winPerc = parseInt(serverState.winPercentage) || 0;
+  let finalIndex;
+  if(winPerc <= 0){
+    const nonPrizeIndices = slices.map((s,i)=>s.type==='none'?i:null).filter(i=>i!==null);
+    finalIndex = nonPrizeIndices[Math.floor(Math.random()*nonPrizeIndices.length)];
+  } else if(winPerc >= 100){
+    const winningIndices = slices.map((s,i)=> (s.type==='prize' || s.type==='reroll') ? i : null).filter(i=>i!==null);
+    finalIndex = winningIndices[Math.floor(Math.random()*winningIndices.length)];
+  } else {
+    if(Math.random()*100 < winPerc){
+      const winningIndices = slices.map((s,i)=> (s.type==='prize' || s.type==='reroll') ? i : null).filter(i=>i!==null);
+      finalIndex = winningIndices[Math.floor(Math.random()*winningIndices.length)];
+    } else {
+      const nonPrizeIndices = slices.map((s,i)=>s.type==='none'?i:null).filter(i=>i!==null);
+      finalIndex = nonPrizeIndices[Math.floor(Math.random()*nonPrizeIndices.length)];
+    }
+  }
+
+  let targetAngle = 360*10 + (360/totalSlices)*finalIndex + (360/(2*totalSlices));
+  const duration = 6000;
+  const start = performance.now();
+  const startRotation = currentRotation;
+
+  function animate(time){
+    let elapsed = time - start;
+    if(elapsed < duration){
+      let t = elapsed/duration;
+      let ease = 1 - Math.pow(1-t,3);
+      let rot = startRotation + targetAngle*ease;
+      currentRotation = rot % 360;
+      drawRotatedWheel(currentRotation);
+      requestAnimationFrame(animate);
+    } else {
+      currentRotation = targetAngle % 360;
+      drawRotatedWheel(currentRotation);
+      const finalSlice = slices[finalIndex];
+      let msg;
+      if(finalSlice.type === 'prize'){
+        msg = `Parabéns! Você ganhou R$${finalSlice.value}`;
+        registerWinner({ code: serverState.gameCode, prize: finalSlice.value });
+      } else if(finalSlice.type === 'reroll'){
+        msg = 'Sheik vai gerar outro código especial pra você';
+        registerWinner({ code: serverState.gameCode, prize: 'REROLL' });
+      } else {
+        msg = 'Tente de novo na próxima promoção';
+      }
+      document.getElementById('resultBox').innerText = msg;
+      document.getElementById('resultBox').style.display = 'block';
+      spinning=false;
+    }
+  }
+  requestAnimationFrame(animate);
+});
+
+/* rotate drawing helper */
+function drawRotatedWheel(rotationDeg){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.save();
+  ctx.translate(radius,radius);
+  ctx.rotate(rotationDeg*Math.PI/180);
+  ctx.translate(-radius,-radius);
+  drawWheel();
+  ctx.restore();
 }
 
-async function saveNewCode(){
-    const nc = document.getElementById("newCode").value.trim();
-    if(nc === "") { alert("Digite um código válido"); return; }
-    try{
-        const bin = await fetchBinLatest();
-        const data = bin.data || bin || {};
-        data.gameCode = String(nc);
-        await updateBin(data);
-        serverState.gameCode = data.gameCode;
-        document.getElementById('currentCode').innerText = serverState.gameCode;
-        alert("Código atualizado!");
-    }catch(e){ console.error(e); alert('Erro ao salvar código'); }
+/* ========== ADMIN ========== */
+document.getElementById('loginBtn').addEventListener('click', loginAdmin);
+function loginAdmin(){
+  const user = document.getElementById('adminUser').value.trim();
+  const pass = document.getElementById('adminPass').value.trim();
+  if(user === ADMIN_CREDENTIALS.user && pass === ADMIN_CREDENTIALS.pass){
+    document.getElementById('adminContent').style.display = 'block';
+    loadServerState().then(()=> {
+      document.getElementById('winPercentage').value = serverState.winPercentage;
+    }).catch(()=>{});
+    showAdminStatus('Logado como admin', false);
+  } else {
+    showAdminStatus('Usuário ou senha incorreto', true);
+  }
 }
 
-async function saveWinPercentage(){
-    let perc = parseInt(document.getElementById("winPercentage").value);
-    if(isNaN(perc) || perc < 0 || perc > 100){ alert('Digite um valor entre 0 e 100'); return; }
-    try{
-        const bin = await fetchBinLatest();
-        const data = bin.data || bin || {};
-        data.winPercentage = perc;
-        await updateBin(data);
-        serverState.winPercentage = perc;
-        alert('Porcentagem de vitória atualizada para ' + perc + '%');
-    }catch(e){ console.error(e); alert('Erro ao salvar porcentagem'); }
-}
+/* Save code */
+document.getElementById('saveCodeBtn').addEventListener('click', async function(){
+  const nc = document.getElementById('newCode').value.trim();
+  if(!nc){ alert('Digite um código válido'); return; }
+  try{
+    const bin = await fetchBinLatest();
+    const data = bin.data || bin || {};
+    data.gameCode = String(nc);
+    await updateBin(data);
+    serverState.gameCode = data.gameCode;
+    document.getElementById('currentCode').innerText = serverState.gameCode;
+    showAdminStatus('Código atualizado com sucesso', false);
+  }catch(e){ console.error(e); showAdminStatus('Erro ao salvar código', true); }
+});
 
-function toggleWinners(){
-    const el = document.getElementById('winnersList');
-    if(el.style.display === 'none' || el.style.display === ''){
-        el.innerHTML = 'Carregando...';
-        (async ()=>{
-            try{
-                await loadServerState();
-                const list = serverState.winners || [];
-                if(list.length === 0) el.innerHTML = '<div style="color:#ccc">Nenhum vencedor ainda.</div>';
-                else {
-                    el.innerHTML = list.slice().reverse().map(w => `<div style="margin-bottom:6px; border-bottom:1px solid #222; padding-bottom:6px;">
-                        <div><strong>${w.prize}</strong> — ${new Date(w.when).toLocaleString()}</div>
-                        <div style="font-size:12px;color:#aaa;">${w.identifier} • código:${w.code}</div>
-                    </div>`).join('');
-                }
-            }catch(e){ el.innerHTML = '<div style="color:#f88">Erro ao carregar vencedores.</div>'; }
-        })();
-        el.style.display = 'block';
-    } else { el.style.display = 'none'; }
-}
+/* Save percentage */
+document.getElementById('savePercBtn').addEventListener('click', async function(){
+  let perc = parseInt(document.getElementById('winPercentage').value);
+  if(isNaN(perc) || perc < 0 || perc > 100){ alert('Digite um valor entre 0 e 100'); return; }
+  try{
+    const bin = await fetchBinLatest();
+    const data = bin.data || bin || {};
+    data.winPercentage = perc;
+    await updateBin(data);
+    serverState.winPercentage = perc;
+    showAdminStatus('Porcentagem atualizada com sucesso', false);
+  }catch(e){ console.error(e); showAdminStatus('Erro ao salvar porcentagem', true); }
+});
 
-/* Recarrega estado a cada 6s */
-setInterval(loadServerState, 6000);
+/* Toggle winners display */
+document.getElementById('viewWinnersBtn').addEventListener('click', async function(){
+  const el = document.getElementById('winnersList');
+  if(el.style.display === 'block'){ el.style.display = 'none'; return; }
+  el.innerHTML = 'Carregando...';
+  try{
+    await loadServerState();
+    const list = serverState.winners || [];
+    if(list.length === 0) el.innerHTML = '<div style="color:#ccc">Nenhum vencedor ainda.</div>';
+    else {
+      el.innerHTML = list.slice().reverse().map(w => `<div style="margin-bottom:8px;border-bottom:1px solid #222;padding-bottom:6px;">
+        <div><strong>${w.prize}</strong> — ${new Date(w.when).toLocaleString()}</div>
+        <div style="font-size:12px;color:#aaa;">${w.identifier} • código:${w.code}</div>
+      </div>`).join('');
+    }
+    el.style.display = 'block';
+  }catch(e){ el.innerHTML = '<div style="color:#f88">Erro ao carregar vencedores.</div>'; }
+});
 </script>
 </body>
 </html>
