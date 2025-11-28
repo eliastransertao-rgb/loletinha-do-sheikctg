@@ -175,7 +175,9 @@ let winPercentage = 10;
 async function loadConfig(){
     try{
         const res = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}/latest`, {
-            headers: { "X-Master-Key": SECRET_KEY }
+            headers: { "$2a$10$cNGQDnPn/gJeWnKXbRc03eeOupHaegcz.WWkZVHmgeGLxt2j/GKGi 
+
+": SECRET_KEY }
         });
         const data = await res.json();
         gameCode = data.record.gameCode;
@@ -351,5 +353,6 @@ document.getElementById("saveBtn").onclick = async function(){
 </script>
 </body>
 </html>
+
 
 
