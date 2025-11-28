@@ -162,20 +162,20 @@ body {
 <audio id="spinSound" src="giro.mp3"></audio>
 
 <script>
-// CONFIGURAÇÃO JSONBIN
-const BIN_ID = "SEU_BIN_ID"; // 692a11ddd0ea881f40068436
-const SECRET_KEY = "SEU_SECRET_KEY"; // $2a$10$x1E43WgjamLTJa.pUhcmKeuyrwUixiXF9XscryRNHEuuvjb3j2YjC 
+// ========== CONFIGURAÇÃO JSONBIN ==========
+const BIN_ID = "SEU_BIN_ID_AQUI"; //692a11ddd0ea881f40068436
+const SECRET_KEY = "SUA_SECRET_KEY_AQUI"; //$2a$10$x1E43WgjamLTJa.pUhcmKeuyrwUixiXF9XscryRNHEuuvjb3j2YjC 
 
 
 
 let gameCode = "";
 let winPercentage = 100;
 
-// Função para carregar config do JSONBin
+// Função para carregar config do JSONBin (atualiza todos)
 async function loadConfig(){
     try{
         const res = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}/latest`, {
-            headers: { 'X-Master-Key': SECRET_KEY }
+            headers: { "X-Master-Key": SECRET_KEY }
         });
         const data = await res.json();
         gameCode = data.record.gameCode;
@@ -186,10 +186,12 @@ async function loadConfig(){
         console.error("Erro ao carregar config:", e);
     }
 }
+
+// Atualiza automaticamente para todos a cada 5 segundos
 loadConfig();
-// Atualiza config a cada 5 segundos para todos os usuários
 setInterval(loadConfig, 5000);
 
+// ========== ROLUETA ==========
 const canvas = document.getElementById('wheelCanvas');
 const ctx = canvas.getContext('2d');
 const radius = canvas.width/2;
@@ -314,6 +316,7 @@ function drawRotatedWheel(rotationDeg){
     ctx.restore();
 }
 
+// Login admin
 function loginAdmin(){
     let user=document.getElementById("adminUser").value;
     let pass=document.getElementById("adminPass").value;
@@ -343,10 +346,9 @@ document.getElementById("saveBtn").onclick = async function(){
             body: JSON.stringify({gameCode, winPercentage})
         });
         document.getElementById("currentCode").innerText = gameCode;
-        alert("Configurações atualizadas!");
+        alert("Configurações atualizadas para TODOS!");
     }catch(e){ console.error(e); alert("Erro ao salvar config."); }
 };
 </script>
 </body>
 </html>
-
