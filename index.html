@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Roleta Canvas Responsiva</title>
+<title>Roleta Canvas Responsiva - Sincronizada</title>
 <style>
 body {
     margin:0;
@@ -74,7 +74,7 @@ body {
     position: fixed;
     top:10px;
     left:10px;
-    width:180px;
+    width:220px;
     background:#000;
     color:#fff;
     padding:8px;
@@ -84,7 +84,7 @@ body {
 #adminPanel input, #adminPanel button {
     width:100%;
     margin-bottom:4px;
-    padding:4px;
+    padding:6px;
     background:#222;
     color:#fff;
     border:1px solid #555;
@@ -122,6 +122,11 @@ body {
     cursor:pointer;
     animation: pulse 1.5s infinite ease-in-out;
 }
+.small {
+    font-size:12px;
+    color:#ddd;
+    margin-top:6px;
+}
 </style>
 </head>
 <body>
@@ -154,12 +159,40 @@ body {
         <label>Porcentagem de vitória (%):</label>
         <input type="number" id="winPercentage" min="0" max="100" placeholder="Ex: 1">
         <button id="savePercBtn">Salvar porcentagem</button>
+
+        <div style="margin-top:8px;">
+            <button id="viewWinnersBtn">Ver vencedores</button>
+            <div id="winnersList" style="max-height:160px; overflow:auto; margin-top:6px; display:none; background:#111; padding:6px; border-radius:6px;"></div>
+        </div>
+        <div class="small">Admin: apenas você tem acesso.</div>
     </div>
 </div>
 
 <audio id="spinSound" src="giro.mp3"></audio>
 
 <script>
+/* ==========================
+   CONFIGURAÇÕES (sua parte)
+   ==========================
+   Substitua BIN_ID e API_KEY caso rotacione a chave.
+*/
+const JSONBIN_BIN_ID = "6929e5df43b1c97be9cb35ba"; // seu BIN ID
+const JSONBIN_API_KEY = "$2a$10$3o0QLDQEmSGEzpZQ.5uH5um1PrsnYYiU3kwVHjb0GqS.Q7.a7jkcq"; // sua API KEY (proteja isto!)
+const JSONBIN_BASE = "https://api.jsonbin.io/v3/b/" + JSONBIN_BIN_ID;
+const ADMIN_CREDENTIALS = { user: "sheikctg", pass: "12345" }; // admin que você escolheu
+
+/* ==========================
+   Estrutura do bin esperado:
+   {
+     "gameCode":"12345",
+     "winPercentage": 100,
+     "usedCodes": ["12345", ...],
+     "winners": [
+        { "code":"12345","prize":5,"when":"2025-11-27T12:00:00Z","identifier": "ip-or-name" }
+     ]
+   }
+   ========================== */
+
 const canvas = document.getElementById('wheelCanvas');
 const ctx = canvas.getContext('2d');
 const radius = canvas.width/2;
@@ -179,6 +212,7 @@ const colors = ["#ff3b3b","#ff8a1f","#ffd400","#7be000","#00d6d6","#1e90ff","#8a
 const totalSlices = slices.length;
 const angleStep = 2*Math.PI/totalSlices;
 let currentRotation = 0;
+let serverState = { gameCode: null, winPercentage: 100, usedCodes: [], winners: [] };
 
 function drawWheel(){
     for(let i=0;i<totalSlices;i++){
@@ -188,7 +222,7 @@ function drawWheel(){
         ctx.moveTo(radius, radius);
         ctx.arc(radius, radius, radius, startAngle, endAngle);
         ctx.closePath();
-        ctx.fillStyle = colors[i] + '88'; // transparência
+        ctx.fillStyle = colors[i] + '88';
         ctx.fill();
         ctx.stroke();
         ctx.save();
@@ -203,31 +237,119 @@ function drawWheel(){
 }
 drawWheel();
 
-if(!localStorage.getItem("gameCode")) localStorage.setItem("gameCode","12345");
-document.getElementById("currentCode").innerText = localStorage.getItem("gameCode");
-if(!localStorage.getItem("winPercentage")) localStorage.setItem("winPercentage","100");
+/* ---------------------------
+   Helpers: ler/atualizar JSONBin
+   --------------------------- */
+async function fetchBinLatest(){
+    // GET https://api.jsonbin.io/v3/b/:binId/latest
+    const url = JSONBIN_BASE + "/latest";
+    const res = await fetch(url, {
+        method: 'GET',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-Master-Key': JSONBIN_API_KEY
+        }
+    });
+    if(!res.ok) throw new Error('Falha ao ler bin: ' + res.status);
+    const j = await res.json();
+    // JSONBin v3 devolve objeto com campo 'record' (ou 'data' dependendo). Verifica ambos.
+    const data = j && (j.record || j) ;
+    // if record has data wrapper:
+    if(data && data.record && typeof data.record === 'object') return data.record;
+    if(j && j.record) return j.record;
+    if(j && j?.data) return j.data;
+    if(j && j?.record?.data) return j.record.data;
+    // fallback: j
+    return j;
+}
 
+async function updateBin(newData){
+    // PUT https://api.jsonbin.io/v3/b/:binId
+    const url = JSONBIN_BASE;
+    // JSONBin expects body: { "data": { ... } } usually. Usaremos essa forma.
+    const body = JSON.stringify({ data: newData });
+    const res = await fetch(url, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-Master-Key': JSONBIN_API_KEY
+        },
+        body
+    });
+    if(!res.ok){
+        const txt = await res.text();
+        throw new Error('Falha ao atualizar bin: ' + res.status + ' ' + txt);
+    }
+    const j = await res.json();
+    return j;
+}
+
+/* Carrega estado inicial do servidor e atualiza UI */
+async function loadServerState(){
+    try{
+        const bin = await fetchBinLatest();
+        // bin pode ter data dentro de record/data
+        const data = bin.data || bin || {};
+        // fields fallback
+        serverState.gameCode = data.gameCode ?? data?.gameCode ?? (serverState.gameCode || "12345");
+        serverState.winPercentage = data.winPercentage ?? data?.winPercentage ?? (serverState.winPercentage ?? 100);
+        serverState.usedCodes = data.usedCodes ?? data?.usedCodes ?? (serverState.usedCodes || []);
+        serverState.winners = data.winners ?? data?.winners ?? (serverState.winners || []);
+        document.getElementById('currentCode').innerText = serverState.gameCode || '—';
+        document.getElementById('winPercentage').value = serverState.winPercentage;
+    }catch(e){
+        console.error(e);
+        document.getElementById('currentCode').innerText = 'ERRO';
+    }
+}
+loadServerState();
+
+/* ---------------------------
+   Game flow
+   --------------------------- */
 function startGame(){
     document.getElementById('introOverlay').style.display='none';
     document.getElementById('spinButton').style.pointerEvents='auto';
 }
 
-function hasUsed(code){ return localStorage.getItem("used_"+code)=="yes"; }
-function markUsed(code){ localStorage.setItem("used_"+code,"yes"); }
-
 let spinning=false;
-document.getElementById("spinButton").addEventListener('click', function(){
+document.getElementById("spinButton").addEventListener('click', async function(){
     if(spinning) return;
     let code = prompt("Digite o código:");
-    if(code !== localStorage.getItem("gameCode")){ alert("Código incorreto!"); return;}
-    if(hasUsed(code)){ alert("Este código já foi usado!"); return;}
+    if(!code) return;
+
+    // Recarrega estado pra garantir validade
+    try {
+        await loadServerState();
+    } catch(e){
+        alert('Erro ao conectar no servidor. Tente novamente.');
+        return;
+    }
+
+    if(String(code) !== String(serverState.gameCode)){
+        alert("Código incorreto!");
+        return;
+    }
+    if(serverState.usedCodes && serverState.usedCodes.includes(String(code))){
+        alert("Este código já foi usado!");
+        return;
+    }
+
+    // marca como usado AGORA (prevenindo múltiplos usos simultâneos)
+    try {
+        await markCodeUsed(code);
+    } catch(e){
+        alert('Erro ao registrar uso do código. Tente de novo.');
+        console.error(e);
+        return;
+    }
+
     spinning=true;
     document.getElementById("spinSound").play();
     document.getElementById("resultBox").style.display="none";
 
-    const winPerc = parseInt(localStorage.getItem("winPercentage"));
+    const winPerc = parseInt(serverState.winPercentage) || 0;
     let finalIndex;
-    // Escolher a fatia final ANTES da animação
     if(winPerc <= 0){
         const nonPrizeIndices = slices.map((s,i)=>s.type==='none'?i:null).filter(i=>i!==null);
         finalIndex = nonPrizeIndices[Math.floor(Math.random()*nonPrizeIndices.length)];
@@ -265,14 +387,16 @@ document.getElementById("spinButton").addEventListener('click', function(){
             let msg;
             if(finalSlice.type === 'prize'){ 
                 msg = `Parabéns! Você ganhou R$${finalSlice.value}`;
+                // registra vencedor
+                registerWinner({ code: serverState.gameCode, prize: finalSlice.value });
             } else if(finalSlice.type === 'reroll'){
                 msg = 'Sheik vai gerar outro código especial pra você';
+                registerWinner({ code: serverState.gameCode, prize: 'REROLL' });
             } else {
                 msg = 'Tente de novo na próxima promoção';
             }
             document.getElementById("resultBox").innerText = msg;
             document.getElementById("resultBox").style.display="block";
-            markUsed(code);
             spinning=false;
         }
     }
@@ -289,34 +413,136 @@ function drawRotatedWheel(rotationDeg){
     ctx.restore();
 }
 
-function loginAdmin(){
-    let user=document.getElementById("adminUser").value;
-    let pass=document.getElementById("adminPass").value;
-    if(user==='sheik' && pass==='sheikadm'){
+/* ---------------------------
+   Operações no JSONBin
+   --------------------------- */
+async function markCodeUsed(code){
+    // carrega bin
+    const bin = await fetchBinLatest();
+    const data = bin.data || bin || {};
+    data.usedCodes = data.usedCodes || [];
+    if(data.usedCodes.includes(String(code))) throw new Error('Já usado');
+    data.usedCodes.push(String(code));
+    // garante que winners existe
+    data.winners = data.winners || [];
+    // atualiza local state
+    serverState.usedCodes = data.usedCodes;
+    // envia update
+    await updateBin(data);
+    return true;
+}
+
+async function registerWinner(entry){
+    // entry: { code, prize, when?, identifier? }
+    try{
+        const bin = await fetchBinLatest();
+        const data = bin.data || bin || {};
+        data.winners = data.winners || [];
+        const record = {
+            code: entry.code,
+            prize: entry.prize,
+            when: new Date().toISOString(),
+            identifier: (navigator.userAgent || 'unknown') // info basica, pode trocar
+        };
+        data.winners.push(record);
+        // ensure usedCodes already contains code
+        data.usedCodes = data.usedCodes || [];
+        if(!data.usedCodes.includes(String(entry.code))) data.usedCodes.push(String(entry.code));
+        await updateBin(data);
+        // atualizar local state também (para o admin ver)
+        serverState.winners = data.winners;
+        serverState.usedCodes = data.usedCodes;
+    }catch(e){
+        console.error('Erro ao registrar vencedor', e);
+    }
+}
+
+/* ---------------------------
+   Admin (apenas você)
+   --------------------------- */
+async function loginAdmin(){
+    let user=document.getElementById("adminUser").value.trim();
+    let pass=document.getElementById("adminPass").value.trim();
+    if(user === ADMIN_CREDENTIALS.user && pass === ADMIN_CREDENTIALS.pass){
+        // mostra painel
         document.getElementById("adminContent").style.display='block';
-        document.getElementById("winPercentage").value = localStorage.getItem("winPercentage");
+        // carrega estado para preencher valores
+        try{ await loadServerState(); } catch(e){}
+        document.getElementById("winPercentage").value = serverState.winPercentage;
         document.getElementById("saveCodeBtn").onclick = saveNewCode;
         document.getElementById("savePercBtn").onclick = saveWinPercentage;
+        document.getElementById("viewWinnersBtn").onclick = toggleWinners;
         alert('Login admin realizado com sucesso!');
     } else {
         alert('Usuário ou senha incorreto!');
     }
 }
 
-function saveNewCode(){
+async function saveNewCode(){
     const nc = document.getElementById("newCode").value.trim();
     if(nc === "") { alert("Digite um código válido"); return; }
-    localStorage.setItem("gameCode", nc);
-    document.getElementById("currentCode").innerText = nc;
-    alert("Código atualizado!");
+    try{
+        // fetch bin, alter code, salvar
+        const bin = await fetchBinLatest();
+        const data = bin.data || bin || {};
+        data.gameCode = String(nc);
+        // opcional: reset usedCodes? Mantemos historico; caso queira reset, limpe usedCodes = []
+        await updateBin(data);
+        serverState.gameCode = data.gameCode;
+        document.getElementById('currentCode').innerText = serverState.gameCode;
+        alert("Código atualizado!");
+    }catch(e){
+        console.error(e);
+        alert('Erro ao salvar código');
+    }
 }
 
-function saveWinPercentage(){
+async function saveWinPercentage(){
     let perc = parseInt(document.getElementById("winPercentage").value);
     if(isNaN(perc) || perc < 0 || perc > 100){ alert('Digite um valor entre 0 e 100'); return; }
-    localStorage.setItem("winPercentage", perc);
-    alert('Porcentagem de vitória atualizada para ' + perc + '%');
+    try{
+        const bin = await fetchBinLatest();
+        const data = bin.data || bin || {};
+        data.winPercentage = perc;
+        await updateBin(data);
+        serverState.winPercentage = perc;
+        alert('Porcentagem de vitória atualizada para ' + perc + '%');
+    }catch(e){
+        console.error(e);
+        alert('Erro ao salvar porcentagem');
+    }
 }
+
+/* Mostrar vencedores */
+function toggleWinners(){
+    const el = document.getElementById('winnersList');
+    if(el.style.display === 'none' || el.style.display === ''){
+        // carregar winners
+        el.innerHTML = 'Carregando...';
+        (async ()=>{
+            try{
+                await loadServerState();
+                const list = serverState.winners || [];
+                if(list.length === 0) el.innerHTML = '<div style="color:#ccc">Nenhum vencedor ainda.</div>';
+                else {
+                    el.innerHTML = list.slice().reverse().map(w => `<div style="margin-bottom:6px; border-bottom:1px solid #222; padding-bottom:6px;">
+                        <div><strong>${w.prize}</strong> — ${new Date(w.when).toLocaleString()}</div>
+                        <div style="font-size:12px;color:#aaa;">${w.identifier} • código:${w.code}</div>
+                    </div>`).join('');
+                }
+            }catch(e){
+                el.innerHTML = '<div style="color:#f88">Erro ao carregar vencedores.</div>';
+            }
+        })();
+        el.style.display = 'block';
+    } else {
+        el.style.display = 'none';
+    }
+}
+
+/* Recarrega estado a cada 6s para manter tudo sincronizado */
+setInterval(loadServerState, 6000);
+
 </script>
 </body>
 </html>
