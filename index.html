@@ -150,16 +150,43 @@ body {
         <label>Código atual:</label>
         <div id="currentCode">Carregando...</div>
         <input type="text" id="newCode" placeholder="Novo código">
-        <button id="saveCodeBtn">Salvar código</button>
         <label>Porcentagem de vitória (%):</label>
-        <input type="number" id="winPercentage" min="0" max="100" placeholder="Ex: 1">
-        <button id="savePercBtn">Salvar porcentagem</button>
+        <input type="number" id="winPercentage" min="0" max="100" placeholder="Ex: 100">
+        <button id="saveBtn">Salvar</button>
     </div>
 </div>
 
 <audio id="spinSound" src="giro.mp3"></audio>
 
 <script>
+// CONFIGURAÇÃO JSONBIN
+const BIN_ID = "SEU_BIN_ID"; // 692a11ddd0ea881f40068436
+const SECRET_KEY = "SEU_SECRET_KEY"; // $2a$10$x1E43WgjamLTJa.pUhcmKeuyrwUixiXF9XscryRNHEuuvjb3j2YjC 
+
+
+
+let gameCode = "";
+let winPercentage = 100;
+
+// Função para carregar config do JSONBin
+async function loadConfig(){
+    try{
+        const res = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}/latest`, {
+            headers: { 'X-Master-Key': SECRET_KEY }
+        });
+        const data = await res.json();
+        gameCode = data.record.gameCode;
+        winPercentage = data.record.winPercentage;
+        document.getElementById("currentCode").innerText = gameCode;
+        document.getElementById("winPercentage").value = winPercentage;
+    }catch(e){
+        console.error("Erro ao carregar config:", e);
+    }
+}
+loadConfig();
+// Atualiza config a cada 5 segundos para todos os usuários
+setInterval(loadConfig, 5000);
+
 const canvas = document.getElementById('wheelCanvas');
 const ctx = canvas.getContext('2d');
 const radius = canvas.width/2;
@@ -175,50 +202,11 @@ const slices = [
   { type:'prize', value:5, text:'TENTANDO A SORTE' },
   { type:'none', text:'TENTANDO A SORTE' }
 ];
-
 const colors = ["#ff3b3b","#ff8a1f","#ffd400","#7be000","#00d6d6","#1e90ff","#8a2be2","#ff1493","#32cd32"];
 const totalSlices = slices.length;
 const angleStep = 2*Math.PI/totalSlices;
 let currentRotation = 0;
 
-// --- JSONBIN CONFIG ---
-const BIN_ID = "692a0c4443b1c97be9cb762a"; // seu bin ID
-const API_KEY = "sua_api_key_aqui"; // sua nova API key
-
-async function fetchConfig(){
-    try {
-        const res = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}/latest`, {
-            headers: { "X-Master-Key": API_KEY }
-        });
-        const data = await res.json();
-        if(data.record){
-            localStorage.setItem("gameCode", data.record.gameCode);
-            localStorage.setItem("winPercentage", data.record.winPercentage);
-            document.getElementById("currentCode").innerText = data.record.gameCode;
-        }
-    } catch(err){
-        console.error("Erro ao carregar config:", err);
-    }
-}
-
-async function saveConfig(newCode, newPerc){
-    try {
-        const res = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}`, {
-            method:"PUT",
-            headers:{
-                "Content-Type":"application/json",
-                "X-Master-Key": API_KEY
-            },
-            body: JSON.stringify({ gameCode:newCode, winPercentage:newPerc })
-        });
-        const data = await res.json();
-        console.log("Config atualizada:", data);
-    } catch(err){
-        console.error("Erro ao salvar config:", err);
-    }
-}
-
-// --- ROUELETA ---
 function drawWheel(){
     for(let i=0;i<totalSlices;i++){
         let startAngle = i*angleStep;
@@ -227,7 +215,7 @@ function drawWheel(){
         ctx.moveTo(radius, radius);
         ctx.arc(radius, radius, radius, startAngle, endAngle);
         ctx.closePath();
-        ctx.fillStyle = colors[i] + '88'; 
+        ctx.fillStyle = colors[i] + '88';
         ctx.fill();
         ctx.stroke();
         ctx.save();
@@ -242,28 +230,25 @@ function drawWheel(){
 }
 drawWheel();
 
-// --- START GAME ---
 function startGame(){
     document.getElementById('introOverlay').style.display='none';
     document.getElementById('spinButton').style.pointerEvents='auto';
 }
 
-// --- SPIN LOGIC ---
 function hasUsed(code){ return localStorage.getItem("used_"+code)=="yes"; }
 function markUsed(code){ localStorage.setItem("used_"+code,"yes"); }
 
 let spinning=false;
 document.getElementById("spinButton").addEventListener('click', async function(){
     if(spinning) return;
-    await fetchConfig(); // garante que temos config atualizada
     let code = prompt("Digite o código:");
-    if(code !== localStorage.getItem("gameCode")){ alert("Código incorreto!"); return;}
-    if(hasUsed(code)){ alert("Este código já foi usado!"); return;}
+    if(code !== gameCode){ alert("Código incorreto!"); return;}
+    if(hasUsed(code)){ alert("Este código já foi usado!"); return; }
     spinning=true;
     document.getElementById("spinSound").play();
     document.getElementById("resultBox").style.display="none";
 
-    const winPerc = parseInt(localStorage.getItem("winPercentage"));
+    const winPerc = winPercentage;
     let finalIndex;
     if(winPerc <= 0){
         const nonPrizeIndices = slices.map((s,i)=>s.type==='none'?i:null).filter(i=>i!==null);
@@ -326,39 +311,38 @@ function drawRotatedWheel(rotationDeg){
     ctx.restore();
 }
 
-// --- ADMIN PANEL ---
 function loginAdmin(){
     let user=document.getElementById("adminUser").value;
     let pass=document.getElementById("adminPass").value;
     if(user==='sheik' && pass==='sheikadm'){
         document.getElementById("adminContent").style.display='block';
-        fetchConfig();
-        document.getElementById("saveCodeBtn").onclick = async () => {
-            const newCode = document.getElementById("newCode").value.trim();
-            const perc = parseInt(localStorage.getItem("winPercentage"));
-            if(newCode === "") { alert("Digite um código válido"); return; }
-            localStorage.setItem("gameCode", newCode);
-            document.getElementById("currentCode").innerText = newCode;
-            await saveConfig(newCode, perc);
-            alert("Código atualizado e sincronizado!");
-        }
-        document.getElementById("savePercBtn").onclick = async () => {
-            const perc = parseInt(document.getElementById("winPercentage").value);
-            if(isNaN(perc) || perc<0 || perc>100){ alert("Valor entre 0 e 100"); return; }
-            const code = localStorage.getItem("gameCode");
-            localStorage.setItem("winPercentage", perc);
-            await saveConfig(code, perc);
-            alert("Porcentagem atualizada e sincronizada!");
-        }
         alert('Login admin realizado com sucesso!');
     } else {
         alert('Usuário ou senha incorreto!');
     }
 }
 
-// --- INICIALIZA CONFIG ---
-fetchConfig();
+// Salvar valores no JSONBin
+document.getElementById("saveBtn").onclick = async function(){
+    const newCode = document.getElementById("newCode").value.trim();
+    const newPerc = parseInt(document.getElementById("winPercentage").value);
+    if(newCode !== "") gameCode = newCode;
+    if(!isNaN(newPerc) && newPerc>=0 && newPerc<=100) winPercentage = newPerc;
 
+    try{
+        await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}`,{
+            method:"PUT",
+            headers:{
+                'Content-Type':'application/json',
+                'X-Master-Key':SECRET_KEY,
+                'X-Bin-Versioning':'false'
+            },
+            body: JSON.stringify({gameCode, winPercentage})
+        });
+        document.getElementById("currentCode").innerText = gameCode;
+        alert("Configurações atualizadas!");
+    }catch(e){ console.error(e); alert("Erro ao salvar config."); }
+};
 </script>
 </body>
 </html>
