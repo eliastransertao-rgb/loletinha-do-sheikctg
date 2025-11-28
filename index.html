@@ -163,13 +163,13 @@ body {
 
 <script>
 // ========== CONFIGURAÇÃO JSONBIN ==========
-const BIN_ID = "SEU_BIN_ID_AQUI"; // https://api.jsonbin.io/v3/b/692a11ddd0ea881f40068436
-const SECRET_KEY = "SUA_SECRET_KEY_AQUI"; // $2a$10$cNGQDnPn/gJeWnKXbRc03eeOupHaegcz.WWkZVHmgeGLxt2j/GKGi 
+const BIN_ID = "SEU_BIN_ID_AQUI"; //https://api.jsonbin.io/v3/b/692a11ddd0ea881f40068436
+const SECRET_KEY = "SUA_SECRET_KEY_AQUI"; //$2a$10$cNGQDnPn/gJeWnKXbRc03eeOupHaegcz.WWkZVHmgeGLxt2j/GKGi 
  
 
 
-let gameCode = "";
-let winPercentage = 100;
+let gameCode = "12345";
+let winPercentage = 10;
 
 // Função para carregar config do JSONBin (atualiza todos)
 async function loadConfig(){
@@ -183,7 +183,6 @@ async function loadConfig(){
         document.getElementById("currentCode").innerText = gameCode;
         document.getElementById("winPercentage").value = winPercentage;
     }catch(e){
-        console.error("Erro ao carregar config:", e);
     }
 }
 
@@ -352,4 +351,5 @@ document.getElementById("saveBtn").onclick = async function(){
 </script>
 </body>
 </html>
+
 
