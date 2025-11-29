@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Roleta Canvas Responsiva</title>
+
 <style>
 body {
     margin:0;
@@ -124,15 +125,15 @@ body {
 }
 </style>
 </head>
+
 <body>
 
 <div id="introOverlay">
     <div id="introBox">
         <p>Digite o código correto para girar a roleta.<br>
-        Você pode ganhar premios em dinehri ou uma chance de girar de novo!
-        se você ganhar basta esta seguindo o sheikctg no instagram
-        postar nos story e me marcar
-        BOA SORTE A TODOS!</p>
+        Você pode ganhar premios em dinheiro ou uma chance de girar de novo!
+        se você ganahr me segue no insta , tira print e me marca nos story
+        BOA SORTE!</p>
         <button onclick="startGame()">Continue</button>
     </div>
 </div>
@@ -149,50 +150,81 @@ body {
     <input type="text" id="adminUser" placeholder="Usuário">
     <input type="password" id="adminPass" placeholder="Senha">
     <button onclick="loginAdmin()">Entrar</button>
+
     <div id="adminContent" style="display:none; margin-top:5px;">
         <label>Código atual:</label>
         <div id="currentCode">Carregando...</div>
+
         <input type="text" id="newCode" placeholder="Novo código">
+        <button id="saveCodeBtn">Salvar código</button>
+
         <label>Porcentagem de vitória (%):</label>
-        <input type="number" id="winPercentage" min="0" max="100" placeholder="Ex: 100">
-        <button id="saveBtn">Salvar</button>
+        <input type="number" id="winPercentage" min="0" max="100" placeholder="Ex: 1">
+        <button id="savePercBtn">Salvar porcentagem</button>
     </div>
 </div>
 
 <audio id="spinSound" src="giro.mp3"></audio>
 
 <script>
-// ========== CONFIGURAÇÃO JSONBIN ==========
-const BIN_ID = "SEU_BIN_ID_AQUI"; //https://api.jsonbin.io/v3/b/692a11ddd0ea881f40068436
-const SECRET_KEY = "SUA_SECRET_KEY_AQUI"; //$2a$10$cNGQDnPn/gJeWnKXbRc03eeOupHaegcz.WWkZVHmgeGLxt2j/GKGi 
- 
+/* ============================================
+   CONFIGURAÇÃO JSONBIN
+============================================ */
+const BIN_ID = "692b2e1f43b1c97be9cd177b";
+const API_KEY = "$2a$10$W2fz8LKBEI4o7pPDUBLPIeD/IstKgzdqIbZjIxjC9qS3AmNFhtufy";
 
+let gameConfig = {
+    gameCode: "12345",
+    winPercentage: 100
+};
 
-let gameCode = "12345";
-let winPercentage = 10;
-
-// Função para carregar config do JSONBin (atualiza todos)
-async function loadConfig(){
-    try{
+/* === Buscar configuração online no JSONBin === */
+async function loadConfig() {
+    try {
         const res = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}/latest`, {
-            headers: { "$2a$10$cNGQDnPn/gJeWnKXbRc03eeOupHaegcz.WWkZVHmgeGLxt2j/GKGi 
-
-": SECRET_KEY }
+            method: "GET",
+            headers: {
+                "X-Master-Key": API_KEY
+            }
         });
+
         const data = await res.json();
-        gameCode = data.record.gameCode;
-        winPercentage = data.record.winPercentage;
-        document.getElementById("currentCode").innerText = gameCode;
-        document.getElementById("winPercentage").value = winPercentage;
-    }catch(e){
+        gameConfig = data.record;
+
+        document.getElementById("currentCode").innerText = gameConfig.gameCode;
+        document.getElementById("winPercentage").value = gameConfig.winPercentage;
+
+    } catch (err) {
+        console.error("Erro ao carregar JSONBin:", err);
+        alert("Erro ao carregar configuração online!");
     }
 }
 
-// Atualiza automaticamente para todos a cada 5 segundos
-loadConfig();
-setInterval(loadConfig, 5000);
+/* === Salvar configuração no JSONBin === */
+async function saveConfigToBin() {
+    try {
+        const res = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}`, {
+            method: "PUT",
+            headers: {
+                "Content-Type": "application/json",
+                "X-Master-Key": API_KEY
+            },
+            body: JSON.stringify(gameConfig)
+        });
 
-// ========== ROLUETA ==========
+        if (!res.ok) throw new Error("Erro ao atualizar");
+
+        alert("Configurações atualizadas para TODOS!");
+    } catch (err) {
+        console.error("Erro ao atualizar JSONBin:", err);
+        alert("Erro ao salvar configuração!");
+    }
+}
+
+/* ============================================
+   CONFIGURAÇÃO DA ROLETA
+============================================ */
+
 const canvas = document.getElementById('wheelCanvas');
 const ctx = canvas.getContext('2d');
 const radius = canvas.width/2;
@@ -208,151 +240,122 @@ const slices = [
   { type:'prize', value:5, text:'TENTANDO A SORTE' },
   { type:'none', text:'TENTANDO A SORTE' }
 ];
+
 const colors = ["#ff3b3b","#ff8a1f","#ffd400","#7be000","#00d6d6","#1e90ff","#8a2be2","#ff1493","#32cd32"];
 const totalSlices = slices.length;
 const angleStep = 2*Math.PI/totalSlices;
+
 let currentRotation = 0;
 
-function drawWheel(){
+/* === Desenhar roleta === */
+function drawWheel() {
     for(let i=0;i<totalSlices;i++){
-        let startAngle = i*angleStep;
+        let startAngle = i * angleStep;
         let endAngle = startAngle + angleStep;
+
         ctx.beginPath();
         ctx.moveTo(radius, radius);
         ctx.arc(radius, radius, radius, startAngle, endAngle);
         ctx.closePath();
-        ctx.fillStyle = colors[i] + '88';
+        ctx.fillStyle = colors[i] + "88";
         ctx.fill();
         ctx.stroke();
+
         ctx.save();
         ctx.translate(radius, radius);
         ctx.rotate(startAngle + angleStep/2);
         ctx.textAlign = "right";
         ctx.fillStyle = "#000";
         ctx.font = "bold 12px Arial";
-        ctx.fillText(slices[i].text, radius-10, 0);
+        ctx.fillText(slices[i].text, radius - 10, 0);
         ctx.restore();
     }
 }
+
 drawWheel();
 
-function startGame(){
-    document.getElementById('introOverlay').style.display='none';
-    document.getElementById('spinButton').style.pointerEvents='auto';
-}
+/* === Remover sistema antigo de códigos usados === */
+function hasUsed() { return false; }
+function markUsed() {}
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Roleta Online</title>
+<style>
+    body {
+        font-family: Arial;
+        background: #111;
+        color: #fff;
+        text-align: center;
+        margin-top: 40px;
+    }
 
-function hasUsed(code){ return localStorage.getItem("used_"+code)=="yes"; }
-function markUsed(code){ localStorage.setItem("used_"+code,"yes"); }
+    #roleta {
+        width: 300px;
+        height: 300px;
+        border-radius: 50%;
+        border: 10px solid gold;
+        margin: 20px auto;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        font-size: 28px;
+        font-weight: bold;
+    }
 
-let spinning=false;
-document.getElementById("spinButton").addEventListener('click', async function(){
-    if(spinning) return;
-    let code = prompt("Digite o código:");
-    if(code !== gameCode){ alert("Código incorreto!"); return;}
-    if(hasUsed(code)){ alert("Este código já foi usado!"); return; }
-    spinning=true;
-    document.getElementById("spinSound").play();
-    document.getElementById("resultBox").style.display="none";
+    button {
+        padding: 15px 25px;
+        font-size: 20px;
+        background: gold;
+        border: none;
+        border-radius: 10px;
+        cursor: pointer;
+        margin-top: 20px;
+    }
+</style>
+</head>
+<body>
 
-    const winPerc = winPercentage;
-    let finalIndex;
-    if(winPerc <= 0){
-        const nonPrizeIndices = slices.map((s,i)=>s.type==='none'?i:null).filter(i=>i!==null);
-        finalIndex = nonPrizeIndices[Math.floor(Math.random()*nonPrizeIndices.length)];
-    } else if(winPerc >= 100){
-        const winningIndices = slices.map((s,i)=> (s.type==='prize' || s.type==='reroll') ? i : null).filter(i=>i!==null);
-        finalIndex = winningIndices[Math.floor(Math.random()*winningIndices.length)];
-    } else {
-        if(Math.random()*100 < winPerc){
-            const winningIndices = slices.map((s,i)=> (s.type==='prize' || s.type==='reroll') ? i : null).filter(i=>i!==null);
-            finalIndex = winningIndices[Math.floor(Math.random()*winningIndices.length)];
-        } else {
-            const nonPrizeIndices = slices.map((s,i)=>s.type==='none'?i:null).filter(i=>i!==null);
-            finalIndex = nonPrizeIndices[Math.floor(Math.random()*nonPrizeIndices.length)];
+<h1>Roleta do SheikCTG</h1>
+
+<div id="roleta">Carregando...</div>
+
+<button onclick="girarRoleta()">Girar</button>
+
+<script>
+const binId = "SEU_BIN_ID_AQUI";
+const apiKey = "SEU_API_KEY_AQUI";
+
+async function carregarRoleta() {
+    const response = await fetch(`https://api.jsonbin.io/v3/b/${binId}/latest`, {
+        headers: {
+            "X-Master-Key": apiKey
         }
-    }
+    });
 
-    let targetAngle = 360*10 + (360/totalSlices)*finalIndex + (360/(2*totalSlices));
-    const duration = 6000;
-    const start = performance.now();
-    const startRotation = currentRotation;
+    const data = await response.json();
+    window.configRoleta = data.record;
 
-    function animate(time){
-        let elapsed = time - start;
-        if(elapsed < duration){
-            let t = elapsed/duration;
-            let ease = 1 - Math.pow(1-t,3);
-            let rot = startRotation + targetAngle*ease;
-            currentRotation = rot % 360;
-            drawRotatedWheel(currentRotation);
-            requestAnimationFrame(animate);
-        } else {
-            currentRotation = targetAngle % 360;
-            drawRotatedWheel(currentRotation);
-            const finalSlice = slices[finalIndex];
-            let msg;
-            if(finalSlice.type === 'prize'){ 
-                msg = `Parabéns! Você ganhou R$${finalSlice.value}`;
-            } else if(finalSlice.type === 'reroll'){
-                msg = 'Sheik vai gerar outro código especial pra você';
-            } else {
-                msg = 'Tente de novo na próxima promoção';
-            }
-            document.getElementById("resultBox").innerText = msg;
-            document.getElementById("resultBox").style.display="block";
-            markUsed(code);
-            spinning=false;
-        }
-    }
-    requestAnimationFrame(animate);
-});
-
-function drawRotatedWheel(rotationDeg){
-    ctx.clearRect(0,0,canvas.width,canvas.height);
-    ctx.save();
-    ctx.translate(radius,radius);
-    ctx.rotate(rotationDeg*Math.PI/180);
-    ctx.translate(-radius,-radius);
-    drawWheel();
-    ctx.restore();
+    document.getElementById("roleta").innerHTML = configRoleta.texto || "Sem texto";
 }
 
-// Login admin
-function loginAdmin(){
-    let user=document.getElementById("adminUser").value;
-    let pass=document.getElementById("adminPass").value;
-    if(user==='sheik' && pass==='sheikadm'){
-        document.getElementById("adminContent").style.display='block';
-        alert('Login admin realizado com sucesso!');
-    } else {
-        alert('Usuário ou senha incorreto!');
-    }
+async function girarRoleta() {
+    const premio = window.configRoleta.premio || "Nada";
+
+    document.getElementById("roleta").innerHTML = "Girando...";
+
+    setTimeout(() => {
+        document.getElementById("roleta").innerHTML = premio;
+    }, 2000);
 }
 
-// Salvar valores no JSONBin
-document.getElementById("saveBtn").onclick = async function(){
-    const newCode = document.getElementById("newCode").value.trim();
-    const newPerc = parseInt(document.getElementById("winPercentage").value);
-    if(newCode !== "") gameCode = newCode;
-    if(!isNaN(newPerc) && newPerc>=0 && newPerc<=100) winPercentage = newPerc;
+// Atualiza automaticamente a cada 3 segundos
+setInterval(carregarRoleta, 3000);
 
-    try{
-        await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}`,{
-            method:"PUT",
-            headers:{
-                'Content-Type':'application/json',
-                'X-Master-Key':SECRET_KEY,
-                'X-Bin-Versioning':'false'
-            },
-            body: JSON.stringify({gameCode, winPercentage})
-        });
-        document.getElementById("currentCode").innerText = gameCode;
-        alert("Configurações atualizadas para TODOS!");
-    }catch(e){ console.error(e); alert("Erro ao salvar config."); }
-};
+// Carrega ao abrir
+carregarRoleta();
 </script>
+
 </body>
 </html>
-
-
-
